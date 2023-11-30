@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  test-build-and-deploy:
     runs-on: ubuntu-latest
 
     permissions:
@@ -14,6 +14,11 @@ jobs:
       contents: read
 
     steps:
+      - name: Get current date
+        id: date
+        run:
+         echo "::set-output name=date::$(TZ=Asia/Tokyo date +'%Y-%m-%d')"
+
       - name: Checkout Repository
         uses: actions/checkout@v2
 
@@ -38,13 +43,15 @@ jobs:
           poetry run pytest
 
       # AWS 認証
-      - uses: aws-actions/configure-aws-credentials@v1
+      - name: Load credential
+        uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-region: "ap-northeast-1"
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE }}
 
       # ECR ログイン
-      - uses: aws-actions/amazon-ecr-login@v1
+      - name: Login to ecr
+        uses: aws-actions/amazon-ecr-login@v1
         id: login-ecr # outputs で参照するために id を設定
 
       # Docker イメージを build・push する
@@ -56,7 +63,7 @@ jobs:
           # イメージを push する ECR リポジトリ名
           REPOSITORY: "demo-repository"
 
-          IMAGE_TAG: backend-${{ github.event.created_at }}-${{ github.sha }}
+          IMAGE_TAG: backend-${{ steps.date.outputs.date }}-${{ github.sha }}
         run: |
           docker build . -f backend/Dockerfile -t ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
           docker push ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -85,7 +92,7 @@ jobs:
           # イメージを push する ECR リポジトリ名
           REPOSITORY: "demo-repository"
 
-          IMAGE_TAG: frontend-${{ github.event.created_at }}-${{ github.sha }}
+          IMAGE_TAG: frontend-${{ steps.date.outputs.date }}-${{ github.sha }}
         run: |
           docker build . -f frontend/Dockerfile -t ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
           docker push ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
