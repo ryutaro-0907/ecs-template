@@ -1,0 +1,65 @@
+version: '3'
+services:
+  frontend:
+    container_name: frontend_container
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    working_dir: "/app"
+    volumes:
+      - ./frontend:/app
+    tty: true
+    entrypoint: npm run ${MODE} # for HU debug
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3000
+    ports:
+      - 3000:3000
+
+  backend:
+    container_name: backend_container
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend:/src
+      - '${LOCAL_DATA_DIR}:/src/data'
+      - '${LOG_DIR}:/src/log'
+    environment:
+      - ALLOW_ORIGIN=${ALLOW_ORIGIN}
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_ENDPOINT=${DB_ENDPOINT}
+      - LOG_DIR=${LOG_DIR}
+    # depends_on:
+    #   - db
+    ports:
+      - 8000:8000
+    stdin_open: true
+    tty: true
+
+  # proxy:
+  #   build:
+  #     context: ./nginx
+  #   container_name: proxy_container
+  #   ports:
+  #     - '${NGINX_PORT}:80'
+  #   environment:
+  #     - TZ=Asia/Tokyo
+  #   volumes:
+  #     - '${LOCAL_DATA_DIR}:/data'
+  #   depends_on:
+  #     - underground-front
+  #     - underground-back
+
+  # db:
+  #   build: ./postgres
+  #   container_name: db_container
+  #   ports:
+  #     - 5432:5432
+  #   environment:
+  #     POSTGRES_USER: ${DB_USER}
+  #     POSTGRES_PASSWORD: ${DB_PASS}
+  #     POSTGRES_DB: app_db
+  #   volumes:
+  #     - '${LOCAL_DATA_DIR}/postgresql:/var/lib/postgresql/data'
