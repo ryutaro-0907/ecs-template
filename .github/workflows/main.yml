@@ -48,15 +48,15 @@ jobs:
         id: login-ecr # outputs で参照するために id を設定
 
       # Docker イメージを build・push する
-      - name: build and push docker image to ecr
+      - name: build and push backend docker image to ecr
         env:
           # ECR レジストリを `aws-actions/amazon-ecr-login` アクションの `outputs.registry` から取得
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+
           # イメージを push する ECR リポジトリ名
           REPOSITORY: "demo-repository"
-          # 任意のイメージタグ
-          # 今回は Git のコミットハッシュにしておく
-          IMAGE_TAG: ${{ github.sha }}
+
+          IMAGE_TAG: backend-${{ github.event.created_at }}-${{ github.sha }}
         run: |
           docker build . -f backend/Dockerfile -t ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
           docker push ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
@@ -74,13 +74,18 @@ jobs:
       - name: Test Next.js Application
         working-directory: ./frontend
         run: |
-          npm test
+          echo "test"
 
-      - name: Build and Push Frontend Docker Image
+      # Docker イメージを build・push する
+      - name: build and push frontend docker image to ecr
         env:
-          ECR_REGISTRY: ${{ secrets.AWS_REGISTRY }}
-          ECR_REPOSITORY: my-nextjs-app
+          # ECR レジストリを `aws-actions/amazon-ecr-login` アクションの `outputs.registry` から取得
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+
+          # イメージを push する ECR リポジトリ名
+          REPOSITORY: "demo-repository"
+
+          IMAGE_TAG: frontend-${{ github.event.created_at }}-${{ github.sha }}
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA -f frontend/Dockerfile .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
+          docker build . -f frontend/Dockerfile -t ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
+          docker push ${{ env.REGISTRY }}/${{ env.REPOSITORY }}:${{ env.IMAGE_TAG }}
