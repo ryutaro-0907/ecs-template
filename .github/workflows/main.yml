@@ -23,11 +23,13 @@ jobs:
           curl -sSL https://install.python-poetry.org | python3 -
 
       - name: Install Python dependencies using Poetry
+        working-directory: ./backend
         run: |
           poetry config virtualenvs.create false
           poetry install
 
       - name: Test Python Application
+        working-directory: ./backend
         run: |
           poetry run pytest backend/tests/
 
@@ -46,13 +48,13 @@ jobs:
           node-version: '14'
 
       - name: Install Node.js dependencies
+        working-directory: ./frontend
         run: |
-          cd frontend
           npm install
 
       - name: Test Next.js Application
+        working-directory: ./frontend
         run: |
-          cd frontend
           npm test
 
       - name: Build and Push Frontend Docker Image
