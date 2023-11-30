@@ -1,0 +1,56 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: docker://ecs-template/backend/Dockerfile
+        with:
+          entrypoint: /bin/sh
+          args: -c 'pip install --upgrade pip && pip install poetry && poetry config virtualenvs.create false && poetry install'
+
+      - name: Test Python Application
+        uses: docker://ecs-template/backend/Dockerfile
+        with:
+          entrypoint: /bin/sh
+          args: -c 'poetry run pytest backend/tests/'
+
+      - name: Build Backend Docker Image
+        env:
+          ECR_REGISTRY: ${{ secrets.AWS_REGISTRY }}
+          ECR_REPOSITORY: my-python-app
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA -f ecs-template/backend/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
+
+      - name: Set up Node.js
+        uses: docker://ecs-template/frontend/Dockerfile
+        with:
+          entrypoint: /bin/sh
+          args: -c 'cd frontend && npm install'
+
+      - name: Test Next.js Application
+        uses: docker://ecs-template/frontend/Dockerfile
+        with:
+          entrypoint: /bin/sh
+          args: -c 'cd frontend && npm test'
+
+      - name: Build Frontend Docker Image
+        env:
+          ECR_REGISTRY: ${{ secrets.AWS_REGISTRY }}
+          ECR_REPOSITORY: my-nextjs-app
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA -f ecs-template/frontend/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA
