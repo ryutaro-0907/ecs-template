@@ -29,9 +29,9 @@ jobs:
           poetry install
 
       - name: Test Python Application
-        working-directory: ./backend
+        working-directory: ./backend/tests
         run: |
-          poetry run pytest backend/tests/
+          poetry run pytest
 
       - name: Build and Push Backend Docker Image
         env:
